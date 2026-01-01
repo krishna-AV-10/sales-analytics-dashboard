@@ -1,0 +1,30 @@
+Date,Region,Product,Category,Sales,Profit,Quantity,Customer
+2024-01-15,North,Laptop,Electronics,1200,240,5,ABC Corp
+2024-01-18,South,Chair,Furniture,500,125,10,XYZ Ltd
+2024-01-22,East,Notebook,Office Supplies,200,40,20,Individual
+2024-01-26,West,Monitor,Electronics,800,160,4,MNO Inc
+
+2024-02-15,North,Laptop,Electronics,1400,280,6,ABC Corp
+2024-02-18,South,Chair,Furniture,650,160,12,XYZ Ltd
+2024-02-22,East,Notebook,Office Supplies,260,55,22,Individual
+2024-02-26,West,Monitor,Electronics,900,180,5,MNO Inc
+
+2024-03-15,North,Laptop,Electronics,1650,330,7,ABC Corp
+2024-03-18,South,Chair,Furniture,720,180,13,XYZ Ltd
+2024-03-22,East,Notebook,Office Supplies,320,65,25,Individual
+2024-03-26,West,Monitor,Electronics,1050,210,6,MNO Inc
+
+2024-04-15,North,Laptop,Electronics,1850,370,8,ABC Corp
+2024-04-18,South,Chair,Furniture,820,205,14,XYZ Ltd
+2024-04-22,East,Notebook,Office Supplies,390,80,28,Individual
+2024-04-26,West,Monitor,Electronics,1200,240,7,MNO Inc
+
+2024-05-15,North,Laptop,Electronics,2100,420,9,ABC Corp
+2024-05-18,South,Chair,Furniture,950,240,15,XYZ Ltd
+2024-05-22,East,Notebook,Office Supplies,460,95,30,Individual
+2024-05-26,West,Monitor,Electronics,1350,270,8,MNO Inc
+
+2024-06-15,North,Laptop,Electronics,2350,470,10,ABC Corp
+2024-06-18,South,Chair,Furniture,1100,275,17,XYZ Ltd
+2024-06-22,East,Notebook,Office Supplies,540,110,32,Individual
+2024-06-26,West,Monitor,Electronics,1550,310,9,MNO Inc
