@@ -1,5 +1,5 @@
 # =========================================
-# 📊 SALES ANALYTICS DASHBOARD + ML EVALUATION
+# 📊 SALES ANALYTICS DASHBOARD + ML FORECAST
 # =========================================
 
 import sys
@@ -19,7 +19,7 @@ import streamlit as st
 import plotly.express as px
 
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from scipy.stats import norm
 
 # =========================================
@@ -34,7 +34,7 @@ st.set_page_config(
 st.title("📈 Sales Analytics Dashboard")
 
 # =========================================
-# SIDEBAR
+# SIDEBAR – FILE UPLOAD
 # =========================================
 st.sidebar.header("📁 Upload Sales Data")
 
@@ -46,11 +46,11 @@ uploaded_file = st.sidebar.file_uploader(
 processor = SalesDataProcessor()
 
 # =========================================
-# MAIN LOGIC
+# MAIN APP
 # =========================================
 if uploaded_file:
 
-    # ---- Save temp file ----
+    # ---- Save uploaded file temporarily ----
     ext = uploaded_file.name.split(".")[-1]
     temp_path = f"temp_upload.{ext}"
 
@@ -61,23 +61,23 @@ if uploaded_file:
         df = processor.load_data(temp_path)
         df = processor.clean_data()
 
-    if os.path.exists(temp_path):
-        os.remove(temp_path)
+    os.remove(temp_path)
 
     if df is None or df.empty:
-        st.error("❌ No usable sales data.")
+        st.error("❌ No usable data found.")
         st.stop()
 
     # =========================================
     # DATE FILTER
     # =========================================
     if "Date" in df.columns:
-        min_date = df["Date"].min().date()
-        max_date = df["Date"].max().date()
-
         st.sidebar.header("📅 Date Filter")
-        start_date = st.sidebar.date_input("Start Date", min_date)
-        end_date = st.sidebar.date_input("End Date", max_date)
+        start_date = st.sidebar.date_input(
+            "Start Date", df["Date"].min().date()
+        )
+        end_date = st.sidebar.date_input(
+            "End Date", df["Date"].max().date()
+        )
 
         df = df[
             (df["Date"] >= pd.to_datetime(start_date)) &
@@ -89,22 +89,29 @@ if uploaded_file:
         st.stop()
 
     # =========================================
-    # KPIs
+    # 🔑 KPIs (FIXED PROFIT MARGIN)
     # =========================================
-    kpis = processor.calculate_kpis()
+    total_sales = df["Sales"].sum() if "Sales" in df.columns else 0
+    total_profit = df["Profit"].sum() if "Profit" in df.columns else 0
+
+    # ✅ CORRECT PROFIT MARGIN CALCULATION
+    avg_profit_margin = (
+        (total_profit / total_sales) * 100
+        if total_sales > 0 else 0
+    )
 
     st.subheader("📊 Key Metrics")
     c1, c2, c3, c4 = st.columns(4)
 
-    c1.metric("Total Sales", f"${kpis.get('Total_Sales',0):,.0f}")
-    c2.metric("Total Profit", f"${kpis.get('Total_Profit',0):,.0f}")
-    c3.metric("Avg Profit Margin", f"{kpis.get('Average_Profit_Margin',0):.2f}%")
+    c1.metric("Total Sales", f"${total_sales:,.0f}")
+    c2.metric("Total Profit", f"${total_profit:,.0f}")
+    c3.metric("Avg Profit Margin", f"{avg_profit_margin:.2f}%")
     c4.metric("Total Orders", len(df))
 
     st.markdown("---")
 
     # =========================================
-    # MONTHLY AGGREGATION
+    # MONTHLY SALES AGGREGATION
     # =========================================
     monthly = (
         df.groupby(df["Date"].dt.to_period("M"))["Sales"]
@@ -123,36 +130,31 @@ if uploaded_file:
     # DATA SUFFICIENCY CHECK
     # =========================================
     st.markdown("---")
-    st.subheader("🔍 Forecast Readiness Check")
+    st.subheader("🔍 Forecast Readiness")
 
     if len(monthly) < 6:
         st.error(
-            f"❌ Only {len(monthly)} months of data.\n"
-            "At least **6 months** required for forecasting."
+            f"❌ Only {len(monthly)} months available. "
+            "At least **6 months** required."
         )
         st.stop()
     else:
-        st.success(
-            f"✅ {len(monthly)} months available — forecasting enabled."
-        )
+        st.success(f"✅ {len(monthly)} months of data available.")
 
     # =========================================
-    # TIME-SERIES REGRESSION WITH LAGS
+    # TIME-SERIES REGRESSION (LAG FEATURES)
     # =========================================
     ts = monthly.copy()
     ts["lag_1"] = ts["Sales"].shift(1)
     ts["lag_2"] = ts["Sales"].shift(2)
     ts["lag_3"] = ts["Sales"].shift(3)
-    ts = ts.dropna()
+    ts.dropna(inplace=True)
 
     X = ts[["lag_1", "lag_2", "lag_3"]]
     y = ts["Sales"]
 
-    # =========================================
-    # 🔹 TIME-AWARE TRAIN / TEST SPLIT
-    # =========================================
+    # ---- Time-aware train/test split ----
     split_idx = int(len(ts) * 0.8)
-
     X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
     y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
 
@@ -163,35 +165,37 @@ if uploaded_file:
     y_test_pred = model.predict(X_test)
 
     # =========================================
-    # 🔹 FORECAST ACCURACY METRICS (TEST SET)
+    # FORECAST ACCURACY
     # =========================================
-    mae_test = mean_absolute_error(y_test, y_test_pred)
-    rmse_test = mean_squared_error(y_test, y_test_pred, squared=False)
+    mae = mean_absolute_error(y_test, y_test_pred)
+    rmse = mean_squared_error(y_test, y_test_pred, squared=False)
 
     st.markdown("---")
-    st.subheader("📐 Forecast Accuracy (Test Data)")
+    st.subheader("📐 Forecast Accuracy (Test Set)")
 
     m1, m2 = st.columns(2)
-    m1.metric("Test MAE", f"{mae_test:,.2f}")
-    m2.metric("Test RMSE", f"{rmse_test:,.2f}")
+    m1.metric("MAE", f"{mae:,.2f}")
+    m2.metric("RMSE", f"{rmse:,.2f}")
 
     # =========================================
-    # ACTUAL vs TRAIN/TEST PREDICTIONS
+    # ACTUAL vs PREDICTED
     # =========================================
     ts["Predicted"] = np.nan
     ts.iloc[:split_idx, ts.columns.get_loc("Predicted")] = y_train_pred
     ts.iloc[split_idx:, ts.columns.get_loc("Predicted")] = y_test_pred
 
-    fig = px.line(
-        ts,
-        x="Date",
-        y=["Sales", "Predicted"],
-        title="Train/Test Predictions vs Actual Sales"
+    st.plotly_chart(
+        px.line(
+            ts,
+            x="Date",
+            y=["Sales", "Predicted"],
+            title="Actual vs Predicted Sales"
+        ),
+        use_container_width=True
     )
-    st.plotly_chart(fig, use_container_width=True)
 
     # =========================================
-    # CONFIDENCE INTERVALS (ON TRAIN)
+    # CONFIDENCE INTERVALS (95%)
     # =========================================
     residuals = y_train - y_train_pred
     std_error = residuals.std()
@@ -200,13 +204,15 @@ if uploaded_file:
     ts["Upper"] = ts["Predicted"] + z * std_error
     ts["Lower"] = ts["Predicted"] - z * std_error
 
-    fig_ci = px.line(
-        ts,
-        x="Date",
-        y=["Sales", "Predicted", "Upper", "Lower"],
-        title="Predictions with 95% Confidence Interval"
+    st.plotly_chart(
+        px.line(
+            ts,
+            x="Date",
+            y=["Sales", "Predicted", "Upper", "Lower"],
+            title="Predictions with 95% Confidence Interval"
+        ),
+        use_container_width=True
     )
-    st.plotly_chart(fig_ci, use_container_width=True)
 
     # =========================================
     # FUTURE FORECAST
